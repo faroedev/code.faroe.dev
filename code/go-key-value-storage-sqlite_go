@@ -28,7 +28,8 @@ func (sqliteKeyValueStorage *sqliteKeyValueStorageStruct) Get(key string) ([]byt
 	err := sqlitex.Execute(sqliteKeyValueStorage.conn, "SELECT value, counter, expires_at FROM record WHERE key = ?", &sqlitex.ExecOptions{
 		Args: []any{key},
 		ResultFunc: func(stmt *sqlite.Stmt) error {
-			value, _ := io.ReadAll(stmt.ColumnReader(0))
+			value := make([]byte, stmt.ColumnLen(0))
+			stmt.ColumnBytes(0, value)
 			counter := stmt.ColumnInt32(1)
 			expiresAtUnix := stmt.ColumnInt64(2)
 
