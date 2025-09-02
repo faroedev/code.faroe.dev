@@ -1,0 +1,173 @@
+/*
+CREATE TABLE user (
+    id TEXT NOT NULL PRIMARY KEY,
+    email_address TEXT NOT NULL UNIQUE,
+    password_hash BLOB NOT NULL,
+    password_salt BLOB NOT NULL,
+    password_hash_algorithm_id TEXT NOT NULL,
+    disabled INTEGER NOT NULL DEFAULT 0,
+    email_address_counter INTEGER NOT NULL DEFAULT 0,
+    password_hash_counter INTEGER NOT NULL DEFAULT 0,
+    disabled_counter INTEGER NOT NULL DEFAULT 0,
+    sessions_counter INTEGER NOT NULL DEFAULT 0
+) STRICT;
+*/
+
+package main
+
+import (
+	"database/sql"
+	"errors"
+	"fmt"
+
+	userserver "github.com/faroedev/go-user-server"
+)
+
+type actionsStruct struct {
+	db *sql.DB
+}
+
+func (actions *actionsStruct) CreateUserAction(actionInvocationId string, emailAddress string, passwordHash []byte, passwordHashAlgorithmId string, passwordSalt []byte) (userserver.UserStruct, error) {
+	id := generateRandomId()
+
+	_, err := actions.db.Exec("INSERT INTO user (id, email_address, password_hash, password_hash_algorithm_id, password_salt) VALUES (?, ?, ?, ?, ?)",
+		id, emailAddress, passwordHash, passwordHashAlgorithmId, passwordSalt)
+
+	if err != nil {
+		if isUniqueConstraintError(err) {
+			return userserver.UserStruct{}, userserver.NewActionError("email_address_already_used")
+		}
+		fmt.Println(err)
+		return userserver.UserStruct{}, userserver.NewActionError("internal_error")
+	}
+
+	user := userserver.UserStruct{
+		Id:                      id,
+		EmailAddress:            emailAddress,
+		PasswordHash:            passwordHash,
+		PasswordHashAlgorithmId: passwordHashAlgorithmId,
+		PasswordSalt:            passwordSalt,
+		DisplayName:             "",
+		Disabled:                false,
+		EmailAddressCounter:     0,
+		PasswordHashCounter:     0,
+		DisabledCounter:         0,
+		SessionsCounter:         0,
+	}
+	return user, nil
+}
+
+func (actions *actionsStruct) GetUserAction(actionInvocationId string, userId string) (userserver.UserStruct, error) {
+	row := actions.db.QueryRow("SELECT email_address, password_hash, password_hash_algorithm_id, password_salt, disabled, email_address_counter, password_hash_counter, disabled_counter, sessions_counter FROM user WHERE id = ?", userId)
+
+	var user userserver.UserStruct
+	user.Id = userId
+	err := row.Scan(
+		&user.EmailAddress,
+		&user.PasswordHash,
+		&user.PasswordHashAlgorithmId,
+		&user.PasswordSalt,
+		&user.Disabled,
+		&user.EmailAddressCounter,
+		&user.PasswordHashCounter,
+		&user.DisabledCounter,
+		&user.SessionsCounter,
+	)
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		return userserver.UserStruct{}, userserver.NewActionError("user_not_found")
+	}
+	if err != nil {
+		fmt.Println(err)
+		return userserver.UserStruct{}, userserver.NewActionError("internal_error")
+	}
+	return user, nil
+}
+
+func (actions *actionsStruct) GetUserByEmailAddressAction(_ string, emailAddress string) (userserver.UserStruct, error) {
+	row := actions.db.QueryRow("SELECT id, password_hash, password_hash_algorithm_id, password_salt, disabled, email_address_counter, password_hash_counter, disabled_counter, sessions_counter FROM user WHERE email_address = ?", emailAddress)
+
+	var user userserver.UserStruct
+	user.EmailAddress = emailAddress
+	err := row.Scan(
+		&user.Id,
+		&user.PasswordHash,
+		&user.PasswordHashAlgorithmId,
+		&user.PasswordSalt,
+		&user.Disabled,
+		&user.EmailAddressCounter,
+		&user.PasswordHashCounter,
+		&user.DisabledCounter,
+		&user.SessionsCounter,
+	)
+	if err != nil errors.Is(err, sql.ErrNoRows) {
+		return userserver.UserStruct{}, userserver.NewActionError("user_not_found")
+	}
+	if err != nil {
+		fmt.Println(err)
+		return userserver.UserStruct{}, userserver.NewActionError("internal_error")
+	}
+	return user, nil
+}
+
+func (actions *actionsStruct) UpdateUserEmailAddressAction(_ string, userId string, emailAddress string, userEmailAddressCounter int32) error {
+	res, err := actions.db.Exec("UPDATE user SET email_address = ?, email_address_counter = email_address_counter + 1 WHERE id = ? AND email_address_counter = ?", emailAddress, userId, userEmailAddressCounter)
+
+	if err != nil {
+		if isUniqueConstraintError(err) {
+			return userserver.NewActionError("email_address_already_used")
+		}
+		fmt.Println(err)
+		return userserver.NewActionError("internal_error")
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected < 1 {
+		return userserver.NewActionError("user_not_found")
+	}
+	return nil
+}
+
+func (actions *actionsStruct) UpdateUserPasswordHashAction(_ string, userId string, passwordHash []byte, passwordHashAlgorithmId string, passwordSalt []byte, userPasswordHashCounter int32) error {
+	res, err := actions.db.Exec("UPDATE user SET password_hash = ?, password_hash_algorithm_id = ?, password_salt = ?, password_hash_counter = password_hash_counter + 1 WHERE id = ? AND password_hash_counter = ?",
+		passwordHash, passwordHashAlgorithmId, passwordSalt, userId, userPasswordHashCounter)
+
+	if err != nil {
+		fmt.Println(err)
+		return userserver.NewActionError("internal_error")
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected < 1 {
+		return userserver.NewActionError("user_not_found")
+	}
+	return nil
+}
+
+func (actions *actionsStruct) IncrementUserSessionsCounterAction(_ string, userId string, userSessionsCounter int32) error {
+	res, err := actions.db.Exec("UPDATE user SET sessions_counter = sessions_counter + 1 WHERE id = ? AND sessions_counter = ?", userId, userSessionsCounter)
+
+	if err != nil {
+		fmt.Println(err)
+		return userserver.NewActionError("internal_error")
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected < 1 {
+		return userserver.NewActionError("user_not_found")
+	}
+	return nil
+}
+
+func (actions *actionsStruct) DeleteUserAction(_ string, userId string) error {
+	res, err := actions.db.Exec("DELETE FROM user WHERE id = ?", userId)
+	if err != nil {
+		fmt.Println(err)
+		return userserver.NewActionError("internal_error")
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected < 1 {
+		return userserver.NewActionError("user_not_found")
+	}
+	return nil
+}
