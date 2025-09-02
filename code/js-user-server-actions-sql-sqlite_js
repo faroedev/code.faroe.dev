@@ -1,6 +1,6 @@
 /*
 CREATE TABLE user (
-    id TEXT PRIMARY KEY,
+    id TEXT NOT NULL PRIMARY KEY,
     email_address TEXT NOT NULL UNIQUE,
     password_hash BLOB NOT NULL,
     password_salt BLOB NOT NULL,
