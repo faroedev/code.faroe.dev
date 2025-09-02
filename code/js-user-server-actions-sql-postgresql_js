@@ -22,7 +22,7 @@ const actions: faroe_user_server.Actions = {
 
         try {
             await db.execute(
-                "INSERT INTO users (id, email_address, password_hash, password_hash_algorithm_id, password_salt) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO app_user (id, email_address, password_hash, password_hash_algorithm_id, password_salt) VALUES (?, ?, ?, ?, ?)",
                 [
                     id,
                     emailAddress,
@@ -59,7 +59,7 @@ const actions: faroe_user_server.Actions = {
         let result: QueryResult;
         try {
             result = await db.execute(
-                "SELECT id, email_address, password_hash, password_hash_algorithm_id, password_salt, disabled, email_address_counter, password_hash_counter, disabled_counter, sessions_counter FROM users WHERE id = ?",
+                "SELECT email_address, password_hash, password_hash_algorithm_id, password_salt, disabled, email_address_counter, password_hash_counter, disabled_counter, sessions_counter FROM app_user WHERE id = ?",
                 [userId]
             );
         } catch {
@@ -73,17 +73,17 @@ const actions: faroe_user_server.Actions = {
         const row = result.rows[0];
 
         const user: faroe_user_server.User = {
-            id: row[0],
-            emailAddress: row[1],
-            passwordHash: row[2],
-            passwordHashAlgorithmId: row[3],
-            passwordSalt: row[4],
-            disabled: row[5],
-            displayName: row[1], // email address
-            emailAddressCounter: row[6],
-            passwordHashCounter: row[7],
-            disabledCounter: row[8],
-            sessionsCounter: row[9],
+            id: userId,
+            emailAddress: row[0],
+            passwordHash: row[1],
+            passwordHashAlgorithmId: row[2],
+            passwordSalt: row[3],
+            disabled: row[4],
+            displayName: row[0], // email address
+            emailAddressCounter: row[5],
+            passwordHashCounter: row[6],
+            disabledCounter: row[7],
+            sessionsCounter: row[8],
         };
         return user;
     },
@@ -92,7 +92,7 @@ const actions: faroe_user_server.Actions = {
         let result: QueryResult;
         try {
             result = await db.execute(
-                "SELECT id, email_address, password_hash, password_hash_algorithm_id, password_salt, disabled, email_address_counter, password_hash_counter, disabled_counter, sessions_counter FROM users WHERE email_address = ?",
+                "SELECT id, password_hash, password_hash_algorithm_id, password_salt, disabled, email_address_counter, password_hash_counter, disabled_counter, sessions_counter FROM app_user WHERE email_address = ?",
                 [emailAddress]
             );
         } catch {
@@ -107,16 +107,16 @@ const actions: faroe_user_server.Actions = {
 
         const user: faroe_user_server.User = {
             id: row[0],
-            emailAddress: row[1],
-            passwordHash: row[2],
-            passwordHashAlgorithmId: row[3],
-            passwordSalt: row[4],
-            disabled: row[5],
-            displayName: row[1], // email address
-            emailAddressCounter: row[6],
-            passwordHashCounter: row[7],
-            disabledCounter: row[8],
-            sessionsCounter: row[9],
+            emailAddress: emailAddress,
+            passwordHash: row[1],
+            passwordHashAlgorithmId: row[2],
+            passwordSalt: row[3],
+            disabled: row[4],
+            displayName: row[0], // email address
+            emailAddressCounter: row[5],
+            passwordHashCounter: row[6],
+            disabledCounter: row[7],
+            sessionsCounter: row[8],
         };
         return user;
     },
@@ -125,7 +125,7 @@ const actions: faroe_user_server.Actions = {
         let result;
         try {
             result = await db.execute(
-                "UPDATE users SET email_address = ?, email_address_counter = email_address_counter + 1 WHERE id = ? AND email_address_counter = ?",
+                "UPDATE app_user SET email_address = ?, email_address_counter = email_address_counter + 1 WHERE id = ? AND email_address_counter = ?",
                 [emailAddress, userId, userEmailAddressCounter]
             );
         } catch {
@@ -141,7 +141,7 @@ const actions: faroe_user_server.Actions = {
         let result;
         try {
             result = await db.execute(
-                "UPDATE users SET password_hash = ?, password_hash_algorithm_id = ?, password_salt = ?, password_hash_counter = password_hash_counter + 1 WHERE id = ? AND password_hash_counter = ?",
+                "UPDATE app_user SET password_hash = ?, password_hash_algorithm_id = ?, password_salt = ?, password_hash_counter = password_hash_counter + 1 WHERE id = ? AND password_hash_counter = ?",
                 [
                     passwordHash,
                     passwordHashAlgorithmId,
@@ -163,7 +163,7 @@ const actions: faroe_user_server.Actions = {
         let result;
         try {
             result = await db.execute(
-                "UPDATE users SET sessions_counter = sessions_counter + 1 WHERE id = ? AND sessions_counter = ?",
+                "UPDATE app_user SET sessions_counter = sessions_counter + 1 WHERE id = ? AND sessions_counter = ?",
                 [userId, userSessionsCounter]
             );
         } catch {
@@ -178,7 +178,7 @@ const actions: faroe_user_server.Actions = {
     async deleteUserAction(_actionInvocationId, userId) {
         let result;
         try {
-            result = await db.execute("DELETE FROM users WHERE id = ?", [
+            result = await db.execute("DELETE FROM app_user WHERE id = ?", [
                 userId,
             ]);
         } catch {
