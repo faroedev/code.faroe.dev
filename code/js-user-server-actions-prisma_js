@@ -1,0 +1,188 @@
+/*
+TODO: For MySQL set the id and email address column collation to be case-sensitive (utf8mb4_unicode_bin).
+
+model User {
+    id                      String      @id
+    emailAddress            String      @unique
+    passwordHash            Bytes
+    passwordSalt            Bytes
+    passwordHashAlgorithmId String
+    disabled                Boolean     @default(false)
+    emailAddressCounter     Int         @default(0)
+    passwordHashCounter     Int         @default(0)
+    disabledCounter         Int         @default(0)
+    sessionsCounter         Int         @default(0)
+    createdAt               DateTime    @default(now())
+}
+*/
+
+import * as faroe_user_server from "@faroe/user-server";
+import { Prisma } from "@prisma/client";
+
+const actions: faroe_user_server.Actions = {
+    async createUserAction(_actionInvocationId, emailAddress, passwordHash, passwordHashAlgorithmId, passwordSalt) {
+        const id = generateId(); // TODO
+        try {
+            await prisma.user.create({
+                data: {
+                    id,
+                    emailAddress,
+                    passwordHash,
+                    passwordSalt,
+                    passwordHashAlgorithmId,
+                    emailAddressCounter: 0,
+                    passwordHashCounter: 0,
+                    sessionsCounter: 0,
+                },
+            });
+        } catch (error) {
+            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+                throw new faroe_user_server.ActionError("email_address_already_used");
+            }
+            throw new faroe_user_server.ActionError("unexpected_error");
+        }
+
+        const user: faroe_user_server.User = {
+            id: id,
+            emailAddress,
+            passwordHash,
+            passwordHashAlgorithmId,
+            passwordSalt,
+            disabled: false,
+            displayName: emailAddress,
+            emailAddressCounter: 0,
+            passwordHashCounter: 0,
+            disabledCounter: 0,
+            sessionsCounter: 0,
+        };
+        return user;
+    },
+
+    async getUserAction(_actionInvocationId, userId) {
+        try {
+            const storedUser = await prisma.user.findUnique({
+                where: { id: userId },
+            });
+            if (storedUser === null) {
+                throw new faroe_user_server.ActionError("user_not_found");
+            }
+            const user: faroe_user_server.User = {
+                id: storedUser.id,
+                emailAddress: storedUser.emailAddress,
+                passwordHash: storedUser.passwordHash,
+                passwordHashAlgorithmId: storedUser.passwordHasAlgorithm,
+                passwordSalt: storedUser.passwordSalt,
+                disabled: false,
+                displayName: storedUser.emailAddress,
+                emailAddressCounter: storedUser.emailAddressCounter,
+                passwordHashCounter: storedUser.passwordHashCounter,
+                disabledCounter: 0,
+                sessionsCounter: storedUser.sessionsCounter,
+            };
+            return user;
+        } catch {
+            throw new faroe_user_server.ActionError("unexpected_error");
+        }
+    },
+
+    async getUserByEmailAddressAction(_actionInvocationId, emailAddress) {
+        try {
+            const storedUser = await prisma.user.findUnique({
+                where: { emailAddress },
+            });
+            if (storedUser === null) {
+                throw new faroe_user_server.ActionError("user_not_found");
+            }
+            const user: faroe_user_server.User = {
+                id: storedUser.id,
+                emailAddress: storedUser.emailAddress,
+                passwordHash: storedUser.passwordHash,
+                passwordHashAlgorithmId: storedUser.passwordHasAlgorithm,
+                passwordSalt: storedUser.passwordSalt,
+                disabled: false,
+                displayName: storedUser.emailAddress,
+                emailAddressCounter: storedUser.emailAddressCounter,
+                passwordHashCounter: storedUser.passwordHashCounter,
+                disabledCounter: 0,
+                sessionsCounter: storedUser.sessionsCounter,
+            };
+            return user;
+        } catch {
+            throw new faroe_user_server.ActionError("unexpected_error");
+        }
+    },
+
+    async updateUserEmailAddressAction(_actionInvocationId, userId, emailAddress, userEmailAddressCounter) {
+        try {
+            await prisma.user.update({
+                where: {
+                    id: userId,
+                    emailAddressCounter: userEmailAddressCounter,
+                },
+                data: {
+                    emailAddress,
+                    emailAddressCounter: { increment: 1 },
+                },
+            });
+        } catch (error) {
+            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+                throw new faroe_user_server.ActionError("user_not_found");
+            }
+            throw new faroe_user_server.ActionError("unexpected_error");
+        }
+    },
+
+    async updateUserPasswordHashAction(_actionInvocationId, userId, passwordHash, passwordHashAlgorithmId, passwordSalt, userPasswordHashCounter) {
+        try {
+            await prisma.user.update({
+                where: {
+                    id: userId,
+                    passwordHashCounter: userPasswordHashCounter,
+                },
+                data: {
+                    passwordHash,
+                    passwordHashAlgorithmId,
+                    passwordSalt,
+                    passwordHashCounter: { increment: 1 },
+                },
+            });
+        } catch (error) {
+            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+                throw new faroe_user_server.ActionError("user_not_found");
+            }
+            throw new faroe_user_server.ActionError("unexpected_error");
+        }
+    },
+
+    async incrementUserSessionsCounterAction(_actionInvocationId, userId, userSessionsCounter) {
+        try {
+            await prisma.user.update({
+                where: {
+                    id: userId,
+                    sessionsCounter: userSessionsCounter,
+                },
+                data: {
+                    sessionsCounter: { increment: 1 },
+                },
+            });
+        } catch (error) {
+            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+               throw new faroe_user_server.ActionError("user_not_found");
+            }
+            throw new faroe_user_server.ActionError("unexpected_error");
+        }
+    },
+
+    async deleteUserAction(_actionInvocationId, userId) {
+        try {
+            await prisma.user.delete({
+                where: { id: userId },
+            });
+        } catch (error) {
+            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+                throw new faroe_user_server.ActionError("user_not_found");
+            }
+            throw new faroe_user_server.ActionError("unexpected_error");
+        }
+    },
+};

@@ -1,0 +1,31 @@
+import * as next_server from "next/server"
+import * as faroe_user_server from "@faroe/user-server"
+
+const actions: faroe_user_server.Actions = {
+	// ...
+}
+
+const resolver = new faroe_user_server.ActionInvocationRequestResolver(actions)
+
+export async function POST(req: next_server.NextRequest): Promise<next_server.NextResponse> {
+	let bodyJSON: string;
+	try {
+		bodyJSON = await req.text()
+	} catch {
+		return new next_server.NextResponse(null, { status: 400 })
+	}
+
+	let responseBodyJSON: string
+	try {
+		responseBodyJSON = await resolver.resolveRequest(bodyText)
+	} catch {
+		// Failed to parse JSON, unknown action, etc
+		return new next_server.NextResponse(null, { status: 400 })
+	}
+
+	return new next_server.NextResponse(responseBodyJSON, {
+		headers: {
+			"Content-Type": "application/json"
+		}
+	})
+}

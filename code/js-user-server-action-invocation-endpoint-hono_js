@@ -1,0 +1,29 @@
+import * as hono from "hono";
+import * as faroe_user_server from "@faroe/user-server";
+
+const app = new hono.Hono();
+
+const actions: faroe_user_server.Actions = {
+    // ...
+};
+
+const resolver = new faroe_user_server.ActionInvocationRequestResolver(actions);
+
+app.post("/invoke-action", async (c) => {
+    let bodyJSON: string;
+    try {
+        bodyJSON = await c.req.text();
+    } catch {
+        return c.body(null, 400);
+    }
+
+    let responseBodyJSON: string;
+    try {
+        responseBodyJSON = await resolver.resolveRequest(bodyJSON);
+    } catch {
+        // Failed to parse JSON, unknown action, etc
+        return c.body(null, 400);
+    }
+    c.header("Content-Type", "application/json");
+    return c.body(responseBodyJSON);
+});

@@ -1,0 +1,203 @@
+import * as faroe_user_server from "@faroe/user-server";
+import * as drizzle from "drizzle-orm";
+import * as sqlite from "drizzle-orm/sqlite-core";
+
+const userTable = sqlite.sqliteTable("user", {
+    id: sqlite.text("id").primaryKey(),
+    emailAddress: sqlite.text("email_address").unique().notNull(),
+    passwordHash: sqlite.blob("password_hash").notNull(),
+    passwordSalt: sqlite.blob("password_salt").notNull(),
+    passwordHashAlgorithmId: sqlite.text("password_hash_algorithm_id").notNull(),
+    disabled: sqlite.integer("disabled", { mode: "boolean" }).notNull().default(false),
+    emailAddressCounter: sqlite.integer("email_address_counter").notNull().default(0),
+    passwordHashCounter: sqlite.integer("password_hash_counter").notNull().default(0),
+    disabledCounter: sqlite.integer("disabled_counter").notNull().default(0),
+    sessionsCounter: sqlite.integer("sessions_counter").notNull().default(0),
+    createdAt: sqlite.text("created_at").notNull().default(drizzle.sql`CURRENT_TIMESTAMP`),
+});
+
+const actions: faroe_user_server.Actions = {
+    async createUserAction(_actionInvocationId, emailAddress, passwordHash, passwordHashAlgorithmId, passwordSalt) {
+        const id = generateId(); // TODO
+        try {
+            await db.insert(userTable).values({
+                id,
+                emailAddress,
+                passwordHash,
+                passwordSalt,
+                passwordHashAlgorithmId,
+            });
+        } catch (error) {
+            // TODO
+            if (error is uniqueConstraintFailedError) {
+                throw new faroe_user_server.ActionError("email_address_already_used");
+            }
+            throw new faroe_user_server.ActionError("unexpected_error");
+        }
+
+        const user: faroe_user_server.User = {
+            id,
+            emailAddress,
+            passwordHash,
+            passwordHashAlgorithmId,
+            passwordSalt,
+            disabled: false,
+            displayName: emailAddress,
+            emailAddressCounter: 0,
+            passwordHashCounter: 0,
+            disabledCounter: 0,
+            sessionsCounter: 0,
+        };
+        return user;
+    },
+
+    async getUserAction(_actionInvocationId, userId) {
+        let storedUsers: []drizzle.InferModel<typeof userTable>
+        try {
+            storedUsers = await db
+                .select()
+                .from(userTable)
+                .where(drizzle.eq(userTable.id, userId))
+        } catch {
+            throw new faroe_user_server.ActionError("unexpected_error");
+        }
+
+        if (storedUsers.length === 0) {
+            throw new faroe_user_server.ActionError("user_not_found");
+        }
+
+        const user: faroe_user_server.User = {
+            id: storedUsers[0].id,
+            emailAddress: storedUsers[0].emailAddress,
+            passwordHash: storedUsers[0].passwordHash,
+            passwordHashAlgorithmId: storedUsers[0].passwordHashAlgorithmId,
+            passwordSalt: storedUsers[0].passwordSalt,
+            disabled: storedUsers[0].disabled,
+            displayName: storedUsers[0].emailAddress,
+            emailAddressCounter: storedUsers[0].emailAddressCounter,
+            passwordHashCounter: storedUsers[0].passwordHashCounter,
+            disabledCounter: storedUsers[0].disabledCounter,
+            sessionsCounter: storedUsers[0].sessionsCounter,
+        };
+        return user;
+    },
+
+    async getUserByEmailAddressAction(_actionInvocationId, emailAddress) {
+        let storedUsers: []drizzle.InferModel<typeof userTable>
+        try {
+            storedUsers = await db
+                .select()
+                .from(userTable)
+                .where(drizzle.eq(userTable.emailAddress, emailAddress))
+        } catch {
+            throw new faroe_user_server.ActionError("unexpected_error");
+        }
+
+        if (storedUsers.length === 0) {
+            throw new faroe_user_server.ActionError("user_not_found");
+        }
+
+        const user: faroe_user_server.User = {
+            id: storedUsers[0].id,
+            emailAddress: storedUsers[0].emailAddress,
+            passwordHash: storedUsers[0].passwordHash,
+            passwordHashAlgorithmId: storedUsers[0].passwordHashAlgorithmId,
+            passwordSalt: storedUsers[0].passwordSalt,
+            disabled: storedUsers[0].disabled,
+            displayName: storedUsers[0].emailAddress,
+            emailAddressCounter: storedUsers[0].emailAddressCounter,
+            passwordHashCounter: storedUsers[0].passwordHashCounter,
+            disabledCounter: storedUsers[0].disabledCounter,
+            sessionsCounter: storedUsers[0].sessionsCounter,
+        };
+        return user;
+    },
+
+    async updateUserEmailAddressAction(_actionInvocationId, userId, emailAddress, userEmailAddressCounter) {
+        let result: { changes: number };
+        try {
+            result = await db
+                .update(userTable)
+                .set({
+                    emailAddress,
+                    emailAddressCounter: drizzle.sql`${userTable.emailAddressCounter} + 1`,
+                })
+                .where(
+                    drizzle.and(
+                        drizzle.eq(userTable.id, userId),
+                        drizzle.eq(userTable.emailAddressCounter, userEmailAddressCounter)
+                    )
+                )
+        } catch {
+            throw new faroe_user_server.ActionError("unexpected_error");
+        }
+
+        if (result.changes === 0) {
+            throw new faroe_user_server.ActionError("user_not_found");
+        }
+    },
+
+    async updateUserPasswordHashAction(_actionInvocationId, userId, passwordHash, passwordHashAlgorithmId, passwordSalt, userPasswordHashCounter) {
+        let result: { changes: number };
+        try {
+            result = await db
+                .update(userTable)
+                .set({
+                    passwordHash,
+                    passwordHashAlgorithmId,
+                    passwordSalt,
+                    passwordHashCounter: drizzle.sql`${userTable.passwordHashCounter} + 1`,
+                })
+                .where(
+                    drizzle.and(
+                        drizzle.eq(userTable.id, userId),
+                        drizzle.eq(userTable.passwordHashCounter, userPasswordHashCounter)
+                    )
+                )
+        } catch (error) {
+            throw new faroe_user_server.ActionError("unexpected_error");
+        }
+
+        if (result.changes === 0) {
+            throw new faroe_user_server.UserNotFoundError();
+        }
+    },
+
+    async incrementUserSessionsCounterAction(_actionInvocationId, userId, userSessionsCounter) {
+        let result: { changes: number };
+        try {
+            result = await db
+                .update(userTable)
+                .set({
+                    sessionsCounter: drizzle.sql`${userTable.sessionsCounter} + 1`,
+                })
+                .where(
+                    drizzle.and(
+                        drizzle.eq(userTable.id, userId),
+                        drizzle.eq(userTable.sessionsCounter, userSessionsCounter)
+                    )
+                )
+        } catch {
+            throw new faroe_user_server.ActionError("unexpected_error");
+        }
+
+        if (result.changes === 0) {
+            throw new faroe_user_server.ActionError("user_not_found");
+        }
+    },
+
+    async deleteUserAction(_actionInvocationId, userId) {
+        let result: { changes: number };
+        try {
+            result = await db
+                .delete(userTable)
+                .where(drizzle.eq(userTable.id, userId))
+        } catch (error) {
+            throw new faroe_user_server.ActionError("unexpected_error");
+        }
+
+        if (result.changes === 0) {
+            throw new faroe_user_server.ActionError("user_not_found");
+        }
+    },
+};

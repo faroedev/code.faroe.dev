@@ -1,0 +1,192 @@
+/*
+CREATE TABLE app_user (
+    id VARCHAR(0) COLLATE utf8mb4_bin PRIMARY KEY, -- TODO: set type (can be ascii)
+    email_address VARCHAR(100) COLLATE utf8mb4_bin NOT NULL UNIQUE, -- can be ascii
+    password_hash VARBINARY(255) NOT NULL,
+    password_salt VARBINARY(255) NOT NULL,
+    password_hash_algorithm_id VARCHAR(127) NOT NULL,
+    disabled BOOLEAN NOT NULL DEFAULT FALSE,
+    email_address_counter INT NOT NULL DEFAULT 0,
+    password_hash_counter INT NOT NULL DEFAULT 0,
+    disabled_counter INT NOT NULL DEFAULT 0,
+    sessions_counter INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP()
+);
+*/
+
+import * as faroe_user_server from "@faroe/user-server";
+
+const actions: faroe_user_server.Actions = {
+    async createUserAction(_actionInvocationId, emailAddress, passwordHash, passwordHashAlgorithmId, passwordSalt) {
+        const id = generateId(); // TODO
+
+        try {
+            await db.execute(
+                "INSERT INTO users (id, email_address, password_hash, password_hash_algorithm_id, password_salt) VALUES (?, ?, ?, ?, ?)",
+                [
+                    id,
+                    emailAddress,
+                    passwordHash,
+                    passwordHashAlgorithmId,
+                    passwordSalt,
+                ]
+            );
+        } catch (error: unknown) {
+            // TODO
+            if (error is uniqueConstraintFailedError) {
+                throw new faroe_user_server.ActionError("email_address_already_used");
+            }
+            throw new faroe_user_server.ActionError("unexpected_error");
+        }
+
+        const user: faroe_user_server.User = {
+            id,
+            emailAddress,
+            passwordHash,
+            passwordHashAlgorithmId,
+            passwordSalt,
+            disabled: false,
+            displayName: emailAddress,
+            emailAddressCounter: 0,
+            passwordHashCounter: 0,
+            disabledCounter: 0,
+            sessionsCounter: 0,
+        };
+        return user;
+    },
+
+    async getUserAction(_actionInvocationId, userId) {
+        let result: QueryResult;
+        try {
+            result = await db.execute(
+                "SELECT id, email_address, password_hash, password_hash_algorithm_id, password_salt, disabled, email_address_counter, password_hash_counter, disabled_counter, sessions_counter FROM users WHERE id = BINARY ?",
+                [userId]
+            );
+        } catch {
+            throw new faroe_user_server.ActionError("unexpected_error");
+        }
+
+        if (result.rows.length === 0) {
+            throw new faroe_user_server.ActionError("user_not_found");
+        }
+
+        const row = result.rows[0];
+
+        const user: faroe_user_server.User = {
+            id: row[0],
+            emailAddress: row[1],
+            passwordHash: row[2],
+            passwordHashAlgorithmId: row[3],
+            passwordSalt: row[4],
+            disabled: row[5],
+            displayName: row[1], // email address
+            emailAddressCounter: row[6],
+            passwordHashCounter: row[7],
+            disabledCounter: row[8],
+            sessionsCounter: row[9],
+        };
+        return user;
+    },
+
+    async getUserByEmailAddressAction(_actionInvocationId, emailAddress) {
+        let result: QueryResult;
+        try {
+            result = await db.execute(
+                "SELECT id, email_address, password_hash, password_hash_algorithm_id, password_salt, disabled, email_address_counter, password_hash_counter, disabled_counter, sessions_counter FROM users WHERE email_address = ?",
+                [emailAddress]
+            );
+        } catch {
+            throw new faroe_user_server.ActionError("unexpected_error");
+        }
+
+        if (result.rows.length === 0) {
+            throw new faroe_user_server.ActionError("user_not_found");
+        }
+
+        const row = result.rows[0];
+
+        const user: faroe_user_server.User = {
+            id: row[0],
+            emailAddress: row[1],
+            passwordHash: row[2],
+            passwordHashAlgorithmId: row[3],
+            passwordSalt: row[4],
+            disabled: row[5],
+            displayName: row[1], // email address
+            emailAddressCounter: row[6],
+            passwordHashCounter: row[7],
+            disabledCounter: row[8],
+            sessionsCounter: row[9],
+        };
+        return user;
+    },
+
+    async updateUserEmailAddressAction(_actionInvocationId, userId, emailAddress, userEmailAddressCounter) {
+        let result;
+        try {
+            result = await db.execute(
+                "UPDATE users SET email_address = ?, email_address_counter = email_address_counter + 1 WHERE id = ? AND email_address_counter = ?",
+                [emailAddress, userId, userEmailAddressCounter]
+            );
+        } catch {
+            throw new faroe_user_server.ActionError("unexpected_error");
+        }
+
+        if (result.changes === 0) {
+            throw new faroe_user_server.ActionError("user_not_found");
+        }
+    },
+
+    async updateUserPasswordHashAction(_actionInvocationId, userId, passwordHash, passwordHashAlgorithmId, passwordSalt, userPasswordHashCounter) {
+        let result;
+        try {
+            result = await db.execute(
+                "UPDATE users SET password_hash = ?, password_hash_algorithm_id = ?, password_salt = ?, password_hash_counter = password_hash_counter + 1 WHERE id = ? AND password_hash_counter = ?",
+                [
+                    passwordHash,
+                    passwordHashAlgorithmId,
+                    passwordSalt,
+                    userId,
+                    userPasswordHashCounter,
+                ]
+            );
+        } catch {
+            throw new faroe_user_server.ActionError("unexpected_error");
+        }
+
+        if (result.changes === 0) {
+            throw new faroe_user_server.UserNotFoundError();
+        }
+    },
+
+    async incrementUserSessionsCounterAction(_actionInvocationId, userId, userSessionsCounter) {
+        let result;
+        try {
+            result = await db.execute(
+                "UPDATE users SET sessions_counter = sessions_counter + 1 WHERE id = ? AND sessions_counter = ?",
+                [userId, userSessionsCounter]
+            );
+        } catch {
+            throw new faroe_user_server.ActionError("unexpected_error");
+        }
+
+        if (result.changes === 0) {
+            throw new faroe_user_server.ActionError("user_not_found");
+        }
+    },
+
+    async deleteUserAction(_actionInvocationId, userId) {
+        let result;
+        try {
+            result = await db.execute("DELETE FROM users WHERE id = ?", [
+                userId,
+            ]);
+        } catch {
+            throw new faroe_user_server.ActionError("unexpected_error");
+        }
+
+        if (result.changes === 0) {
+            throw new faroe_user_server.ActionError("user_not_found");
+        }
+    },
+};

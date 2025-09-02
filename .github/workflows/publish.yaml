@@ -1,0 +1,32 @@
+name: "Publish"
+on: [push]
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{secrets.CLOUDFLARE_API_TOKEN}}
+
+jobs:
+  publish-docs:
+    name: Publish docs
+    runs-on: ubuntu-latest
+    if: github.repository == 'faroedev/code.faroe.dev' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: Install dependencies
+        run: pnpm install
+      - name: Build
+        run: |
+          pnpm tsc
+          node index.js
+      - name: install wrangler
+        run: npm i -g wrangler
+      - name: deploy
+        run: wrangler deploy --branch main

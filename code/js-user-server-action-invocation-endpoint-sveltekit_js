@@ -1,0 +1,30 @@
+import * as faroe_user_server from "@faroe/user-server";
+import * as sveltekit from "@sveltejs/kit";
+
+const actions: faroe_user_server.Actions = {
+	// ...
+};
+
+const resolver = new faroe_user_server.ActionInvocationRequestResolver(actions);
+
+export const POST: sveltekit.RequestHandler = async ({ request }) => {
+	let bodyText: string;
+	try {
+		bodyText = await request.text();
+	} catch {
+		return new Response(null, { status: 400 });
+	}
+
+	let responseBodyJSON: string;
+	try {
+		responseBodyJSON = await resolver.resolveRequest(bodyText);
+	} catch {
+		return new Response(null, { status: 400 });
+	}
+
+	return new Response(responseBodyJSON, {
+		headers: {
+			"Content-Type": "application/json"
+		}
+	});
+};
