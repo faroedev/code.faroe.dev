@@ -5,8 +5,8 @@ env:
   CLOUDFLARE_API_TOKEN: ${{secrets.CLOUDFLARE_API_TOKEN}}
 
 jobs:
-  publish-docs:
-    name: Publish docs
+  build-and-deploy:
+    name: Build and deploy
     runs-on: ubuntu-latest
     if: github.repository == 'faroedev/code.faroe.dev' && github.ref == 'refs/heads/main'
     steps:
