@@ -9,8 +9,7 @@ CREATE TABLE app_user (
     email_address_counter INT NOT NULL DEFAULT 0,
     password_hash_counter INT NOT NULL DEFAULT 0,
     disabled_counter INT NOT NULL DEFAULT 0,
-    sessions_counter INT NOT NULL DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP()
+    sessions_counter INT NOT NULL DEFAULT 0
 );
 */
 

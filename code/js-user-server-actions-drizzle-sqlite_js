@@ -12,8 +12,7 @@ const userTable = sqlite.sqliteTable("user", {
     emailAddressCounter: sqlite.integer("email_address_counter").notNull().default(0),
     passwordHashCounter: sqlite.integer("password_hash_counter").notNull().default(0),
     disabledCounter: sqlite.integer("disabled_counter").notNull().default(0),
-    sessionsCounter: sqlite.integer("sessions_counter").notNull().default(0),
-    createdAt: sqlite.text("created_at").notNull().default(drizzle.sql`CURRENT_TIMESTAMP`),
+    sessionsCounter: sqlite.integer("sessions_counter").notNull().default(0)
 });
 
 const actions: faroe_user_server.Actions = {

@@ -12,8 +12,7 @@ const userTable = pg.pgTable("user", {
     emailAddressCounter: pg.integer("email_address_counter").notNull().default(0),
     passwordHashCounter: pg.integer("password_hash_counter").notNull().default(0),
     disabledCounter: pg.integer("disabled_counter").notNull().default(0),
-    sessionsCounter: pg.integer("sessions_counter").notNull().default(0),
-    createdAt: pg.timestamp("created_at").notNull().defaultNow(),
+    sessionsCounter: pg.integer("sessions_counter").notNull().default(0)
 });
 
 const actions: faroe_user_server.Actions = {

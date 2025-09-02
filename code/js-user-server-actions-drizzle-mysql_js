@@ -14,8 +14,7 @@ const userTable = mysql.mysqlTable("user", {
     emailAddressCounter: mysql.int("email_address_counter").notNull().default(0),
     passwordHashCounter: mysql.int("password_hash_counter").notNull().default(0),
     disabledCounter: mysql.int("disabled_counter").notNull().default(0),
-    sessionsCounter: mysql.int("sessions_counter").notNull().default(0),
-    createdAt: mysql.datetime("created_at").notNull().default(drizzle.sql`CURRENT_TIMESTAMP()`),
+    sessionsCounter: mysql.int("sessions_counter").notNull().default(0)
 });
 
 const actions: faroe_user_server.Actions = {
