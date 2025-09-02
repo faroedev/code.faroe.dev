@@ -1,15 +1,15 @@
 /*
 CREATE TABLE app_user (
-    id VARCHAR(0) COLLATE utf8mb4_bin PRIMARY KEY, -- TODO: set type (can be ascii)
-    email_address VARCHAR(100) COLLATE utf8mb4_bin NOT NULL UNIQUE, -- can be ascii
-    password_hash VARBINARY(255) NOT NULL,
-    password_salt VARBINARY(255) NOT NULL,
-    password_hash_algorithm_id VARCHAR(127) NOT NULL,
-    disabled BOOLEAN NOT NULL DEFAULT FALSE,
-    email_address_counter INT NOT NULL DEFAULT 0,
-    password_hash_counter INT NOT NULL DEFAULT 0,
-    disabled_counter INT NOT NULL DEFAULT 0,
-    sessions_counter INT NOT NULL DEFAULT 0
+	id VARCHAR(0) COLLATE utf8mb4_bin PRIMARY KEY, -- TODO: set type (can be ascii)
+	email_address VARCHAR(100) COLLATE utf8mb4_bin NOT NULL UNIQUE, -- can be ascii
+	password_hash VARBINARY(255) NOT NULL,
+	password_salt VARBINARY(255) NOT NULL,
+	password_hash_algorithm_id VARCHAR(127) NOT NULL,
+	disabled BOOLEAN NOT NULL DEFAULT FALSE,
+	email_address_counter INT NOT NULL DEFAULT 0,
+	password_hash_counter INT NOT NULL DEFAULT 0,
+	disabled_counter INT NOT NULL DEFAULT 0,
+	sessions_counter INT NOT NULL DEFAULT 0
 );
 */
 
@@ -42,17 +42,17 @@ func (actions *actionsStruct) CreateUserAction(actionInvocationId string, emailA
 	}
 
 	user := userserver.UserStruct{
-		Id:                      id,
-		EmailAddress:            emailAddress,
-		PasswordHash:            passwordHash,
-		PasswordHashAlgorithmId: passwordHashAlgorithmId,
-		PasswordSalt:            passwordSalt,
-		DisplayName:             "",
-		Disabled:                false,
-		EmailAddressCounter:     0,
-		PasswordHashCounter:     0,
-		DisabledCounter:         0,
-		SessionsCounter:         0,
+		Id:							id,
+		EmailAddress:				emailAddress,
+		PasswordHash:				passwordHash,
+		PasswordHashAlgorithmId:	passwordHashAlgorithmId,
+		PasswordSalt:				passwordSalt,
+		DisplayName:				"",
+		Disabled:					false,
+		EmailAddressCounter:		0,
+		PasswordHashCounter:		0,
+		DisabledCounter:			0,
+		SessionsCounter:			0,
 	}
 	return user, nil
 }

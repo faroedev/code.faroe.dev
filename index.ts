@@ -26,7 +26,7 @@ for (const filename of filenames) {
 		theme: "one-light",
 	});
 
-	const html = `<html><head><title>${title}</title></head><body style="background-color:#FAFAFA;">${codeHTML}</body></html>`;
+	const html = `<html><head><title>${title}</title></head><body style="background-color:#FAFAFA;tab-size:4;">${codeHTML}</body></html>`;
 
 	await fs.writeFile(path.join("dist", outputFilename), html);
 }

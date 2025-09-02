@@ -1,15 +1,15 @@
 /*
 CREATE TABLE user (
-    id TEXT NOT NULL PRIMARY KEY,
-    email_address TEXT NOT NULL UNIQUE,
-    password_hash BLOB NOT NULL,
-    password_salt BLOB NOT NULL,
-    password_hash_algorithm_id TEXT NOT NULL,
-    disabled INTEGER NOT NULL DEFAULT 0,
-    email_address_counter INTEGER NOT NULL DEFAULT 0,
-    password_hash_counter INTEGER NOT NULL DEFAULT 0,
-    disabled_counter INTEGER NOT NULL DEFAULT 0,
-    sessions_counter INTEGER NOT NULL DEFAULT 0
+	id TEXT NOT NULL PRIMARY KEY,
+	email_address TEXT NOT NULL UNIQUE,
+	password_hash BLOB NOT NULL,
+	password_salt BLOB NOT NULL,
+	password_hash_algorithm_id TEXT NOT NULL,
+	disabled INTEGER NOT NULL DEFAULT 0,
+	email_address_counter INTEGER NOT NULL DEFAULT 0,
+	password_hash_counter INTEGER NOT NULL DEFAULT 0,
+	disabled_counter INTEGER NOT NULL DEFAULT 0,
+	sessions_counter INTEGER NOT NULL DEFAULT 0
 ) STRICT;
 */
 
@@ -42,17 +42,17 @@ func (actions *actionsStruct) CreateUserAction(actionInvocationId string, emailA
 	}
 
 	user := userserver.UserStruct{
-		Id:                      id,
-		EmailAddress:            emailAddress,
-		PasswordHash:            passwordHash,
-		PasswordHashAlgorithmId: passwordHashAlgorithmId,
-		PasswordSalt:            passwordSalt,
-		DisplayName:             "",
-		Disabled:                false,
-		EmailAddressCounter:     0,
-		PasswordHashCounter:     0,
-		DisabledCounter:         0,
-		SessionsCounter:         0,
+		Id:					        id,
+		EmailAddress:			    emailAddress,
+		PasswordHash:			    passwordHash,
+		PasswordHashAlgorithmId:    passwordHashAlgorithmId,
+		PasswordSalt:			    passwordSalt,
+		DisplayName:			    "",
+		Disabled:				    false,
+		EmailAddressCounter:	    0,
+		PasswordHashCounter:	    0,
+		DisabledCounter:		    0,
+		SessionsCounter:		    0,
 	}
 	return user, nil
 }

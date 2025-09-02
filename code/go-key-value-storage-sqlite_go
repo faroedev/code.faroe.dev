@@ -33,10 +33,10 @@ func (sqliteKeyValueStorage *sqliteKeyValueStorageStruct) Get(key string) ([]byt
 			expiresAtUnix := stmt.ColumnInt64(2)
 
 			record := sqliteKeyValueStorageRecordStruct{
-				key:       key,
-				value:     value,
-				counter:   counter,
-				expiresAt: time.Unix(expiresAtUnix, 0),
+				key:		key,
+				value:		value,
+				counter:	counter,
+				expiresAt:	time.Unix(expiresAtUnix, 0),
 			}
 
 			records = append(records, record)
@@ -117,8 +117,8 @@ func (sqliteKeyValueStorage *sqliteKeyValueStorageStruct) Delete(key string) err
 }
 
 type sqliteKeyValueStorageRecordStruct struct {
-	key       string
-	value     []byte
-	counter   int32
-	expiresAt time.Time
+	key			string
+	value		[]byte
+	counter		int32
+	expiresAt	time.Time
 }
