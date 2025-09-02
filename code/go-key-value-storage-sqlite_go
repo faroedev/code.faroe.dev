@@ -9,7 +9,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/norskehavet/faroe"
+	"github.com/faroedev/faroe"
 	"zombiezen.com/go/sqlite"
 	"zombiezen.com/go/sqlite/sqlitex"
 )
