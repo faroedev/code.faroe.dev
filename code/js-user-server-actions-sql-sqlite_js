@@ -78,7 +78,7 @@ const actions: faroe_user_server.Actions = {
 			passwordHashAlgorithmId: row[2],
 			passwordSalt: row[3],
 			disabled: row[4],
-			displayName: row[0], // email address
+			displayName: "",
 			emailAddressCounter: row[5],
 			passwordHashCounter: row[6],
 			disabledCounter: row[7],
@@ -111,7 +111,7 @@ const actions: faroe_user_server.Actions = {
 			passwordHashAlgorithmId: row[2],
 			passwordSalt: row[3],
 			disabled: row[4],
-			displayName: row[0], // email address
+			displayName: "",
 			emailAddressCounter: row[5],
 			passwordHashCounter: row[6],
 			disabledCounter: row[7],
