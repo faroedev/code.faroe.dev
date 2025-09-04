@@ -42,17 +42,17 @@ func (actions *actionsStruct) CreateUserAction(actionInvocationId string, emailA
 	}
 
 	user := userserver.UserStruct{
-		Id:							id,
-		EmailAddress:				emailAddress,
-		PasswordHash:				passwordHash,
-		PasswordHashAlgorithmId:	passwordHashAlgorithmId,
-		PasswordSalt:				passwordSalt,
-		DisplayName:				"",
-		Disabled:					false,
-		EmailAddressCounter:		0,
-		PasswordHashCounter:		0,
-		DisabledCounter:			0,
-		SessionsCounter:			0,
+		Id:                      id,
+		EmailAddress:            emailAddress,
+		PasswordHash:            passwordHash,
+		PasswordHashAlgorithmId: passwordHashAlgorithmId,
+		PasswordSalt:            passwordSalt,
+		DisplayName:             "",
+		Disabled:                false,
+		EmailAddressCounter:     0,
+		PasswordHashCounter:     0,
+		DisabledCounter:         0,
+		SessionsCounter:         0,
 	}
 	return user, nil
 }
@@ -99,7 +99,7 @@ func (actions *actionsStruct) GetUserByEmailAddressAction(_ string, emailAddress
 		&user.DisabledCounter,
 		&user.SessionsCounter,
 	)
-	if err != nil errors.Is(err, sql.ErrNoRows) {
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return userserver.UserStruct{}, userserver.NewActionError("user_not_found")
 	}
 	if err != nil {

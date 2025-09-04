@@ -17,8 +17,8 @@ type cacheStruct struct {
 
 func newCache() *cacheStruct {
 	storage := &cacheStruct{
-		records:    map[string]cacheRecordStruct{},
-		m:          &sync.Mutex{},
+		records: map[string]cacheRecordStruct{},
+		m:       &sync.Mutex{},
 	}
 
 	return storage

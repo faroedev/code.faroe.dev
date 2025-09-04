@@ -17,8 +17,8 @@ type rateLimitStorageStruct struct {
 
 func newRateLimitStorage() *rateLimitStorageStruct {
 	storage := &rateLimitStorageStruct{
-		records:    map[string]rateLimitStorageRecordStruct{},
-		m:          &sync.Mutex{},
+		records: map[string]rateLimitStorageRecordStruct{},
+		m:       &sync.Mutex{},
 	}
 
 	return storage

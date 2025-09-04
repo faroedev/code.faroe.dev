@@ -12,13 +12,13 @@ import (
 
 type mainStorageStruct struct {
 	records map[string]mainStorageRecordStruct
-    m       *sync.Mutex
+	m       *sync.Mutex
 }
 
 func newMainStorage() *mainStorageStruct {
 	storage := &mainStorageStruct{
-		records:    map[string]mainStorageRecordStruct{},
-        m:          &sync.Mutex{},
+		records: map[string]mainStorageRecordStruct{},
+		m:       &sync.Mutex{},
 	}
 	return storage
 }
