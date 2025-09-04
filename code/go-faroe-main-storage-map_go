@@ -60,6 +60,7 @@ func (mainStorage *mainStorageStruct) Update(key string, value []byte, _ time.Ti
 		return faroe.ErrMainStorageEntryNotFound
 	}
 	record.value = value
+	record.counter++
 	mainStorage.records[key] = record
 
 	return nil
