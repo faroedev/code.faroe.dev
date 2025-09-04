@@ -8,6 +8,8 @@ const actions: faroe_user_server.Actions = {
 const resolver = new faroe_user_server.ActionInvocationRequestResolver(actions);
 
 export async function (context: astro.APIContext): Promise<Response> {
+	// TODO: Protect route.
+	
 	let bodyJSON: string;
 
 	try {

@@ -8,6 +8,8 @@ const actions: faroe_user_server.Actions = {
 const resolver = new faroe_user_server.ActionInvocationRequestResolver(actions)
 
 export async function POST(req: next_server.NextRequest): Promise<next_server.NextResponse> {
+	// TODO: Protect route.
+	
 	let bodyJSON: string;
 	try {
 		bodyJSON = await req.text()
