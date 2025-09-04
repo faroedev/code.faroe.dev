@@ -5,11 +5,11 @@ const actions: faroe_user_server.Actions = {
 	// ...
 }
 
-const resolver = new faroe_user_server.ActionInvocationRequestResolver(actions)
+const server = new faroe_user_server.Server(actions);
 
 export async function POST(req: next_server.NextRequest): Promise<next_server.NextResponse> {
 	// TODO: Protect route.
-	
+
 	let bodyJSON: string;
 	try {
 		bodyJSON = await req.text()
@@ -19,7 +19,7 @@ export async function POST(req: next_server.NextRequest): Promise<next_server.Ne
 
 	let responseBodyJSON: string
 	try {
-		responseBodyJSON = await resolver.resolveRequest(bodyText)
+		responseBodyJSON = await server.resolveActionInvocationEndpointRequest(bodyJSON);
 	} catch {
 		// Failed to parse JSON, unknown action, etc
 		return new next_server.NextResponse(null, { status: 400 })

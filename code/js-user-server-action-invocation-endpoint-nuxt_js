@@ -4,7 +4,7 @@ const actions: faroe_user_server.Actions = {
 	// ...
 };
 
-const resolver = new faroe_user_server.ActionInvocationRequestResolver(actions);
+const server = new faroe_user_server.Server(actions);
 
 export default defineEventHandler(async (event) => {
 	// TODO: Protect route.
@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
 
 	let responseBodyJSON: string;
 	try {
-		responseBodyJSON = await resolver.resolveRequest(bodyJSON);
+		responseBodyJSON = await server.resolveActionInvocationEndpointRequest(bodyJSON);
 	} catch {
 		return new Response(null, { status: 400 });
 	}

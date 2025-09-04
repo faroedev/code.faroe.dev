@@ -7,11 +7,11 @@ const actions: faroe_user_server.Actions = {
 	// ...
 };
 
-const resolver = new faroe_user_server.ActionInvocationRequestResolver(actions);
+const server = new faroe_user_server.Server(actions);
 
 app.post("/invoke-action", async (c) => {
 	// TODO: Protect route.
-	
+
 	let bodyJSON: string;
 	try {
 		bodyJSON = await c.req.text();
@@ -21,7 +21,7 @@ app.post("/invoke-action", async (c) => {
 
 	let responseBodyJSON: string;
 	try {
-		responseBodyJSON = await resolver.resolveRequest(bodyJSON);
+		responseBodyJSON = await server.resolveActionInvocationEndpointRequest(bodyJSON);
 	} catch {
 		// Failed to parse JSON, unknown action, etc
 		return c.body(null, 400);
