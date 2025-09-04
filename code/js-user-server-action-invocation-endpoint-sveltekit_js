@@ -10,16 +10,16 @@ const resolver = new faroe_user_server.ActionInvocationRequestResolver(actions);
 export const POST: sveltekit.RequestHandler = async ({ request }) => {
 	// TODO: Protect route.
 	
-	let bodyText: string;
+	let bodyJSON: string;
 	try {
-		bodyText = await request.text();
+		bodyJSON = await request.text();
 	} catch {
 		return new Response(null, { status: 400 });
 	}
 
 	let responseBodyJSON: string;
 	try {
-		responseBodyJSON = await resolver.resolveRequest(bodyText);
+		responseBodyJSON = await resolver.resolveRequest(bodyJSON);
 	} catch {
 		return new Response(null, { status: 400 });
 	}

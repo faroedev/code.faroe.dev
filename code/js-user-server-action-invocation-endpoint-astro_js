@@ -9,9 +9,8 @@ const resolver = new faroe_user_server.ActionInvocationRequestResolver(actions);
 
 export async function (context: astro.APIContext): Promise<Response> {
 	// TODO: Protect route.
-	
-	let bodyJSON: string;
 
+	let bodyJSON: string;
 	try {
 		bodyJSON = await context.request.text();
 	} catch {

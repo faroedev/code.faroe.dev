@@ -8,9 +8,8 @@ const resolver = new faroe_user_server.ActionInvocationRequestResolver(actions);
 
 export default defineEventHandler(async (event) => {
 	// TODO: Protect route.
-	
-	let bodyJSON: string;
 
+	let bodyJSON: string;
 	try {
 		bodyJSON = await event.req.text();
 	} catch {
