@@ -1,7 +1,7 @@
 /*
 CREATE TABLE app_user (
-	id VARCHAR(0) COLLATE utf8mb4_bin PRIMARY KEY, -- TODO: set type (can be ascii)
-	email_address VARCHAR(100) COLLATE utf8mb4_bin NOT NULL UNIQUE, -- can be ascii
+	id VARCHAR(0) COLLATE utf8mb4_bin PRIMARY KEY, -- TODO: set type (can be ascii), use binary collation
+	email_address VARCHAR(100) COLLATE utf8mb4_bin NOT NULL UNIQUE, -- NOTE: can be ascii, use binary collation
 	password_hash VARBINARY(255) NOT NULL,
 	password_salt VARBINARY(255) NOT NULL,
 	password_hash_algorithm_id VARCHAR(127) NOT NULL,
