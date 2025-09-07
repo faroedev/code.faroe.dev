@@ -1,0 +1,183 @@
+package main
+
+import (
+	"crypto/tls"
+	"fmt"
+	"net"
+	"net/smtp"
+	"time"
+)
+
+type senderIdentity struct {
+	// Can be empty string, in which case email is used
+	name  string
+	email string
+}
+
+type smtpActionsEmailSender struct {
+	identity senderIdentity
+	server   string
+	port     string
+	auth     smtp.Auth
+}
+
+func (emailSender *smtpActionsEmailSender) setupClient() (*smtp.Client, error) {
+	serverAddr := emailSender.server + ":" + emailSender.port
+	// We don't use SMTP dial because then the local name is set to "localhost", which can lead to
+	// issues when using e.g. IP authentication
+	conn, err := net.Dial("tcp", serverAddr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to server at %s: %v", serverAddr, err)
+	}
+	tlsConfig := &tls.Config{
+		ServerName: emailSender.server,
+	}
+	client, err := smtp.NewClient(conn, emailSender.server)
+	if err != nil {
+		return nil, fmt.Errorf("failed to establish SMTP client: %v", err)
+	}
+
+	// We set the localName based on the actual connection address, which is done using `client.Hello`
+	localAddr := conn.LocalAddr().String()
+	localName, _, _ := net.SplitHostPort(localAddr)
+	err = client.Hello(localName)
+	if err != nil {
+		return nil, fmt.Errorf("Error sending EHLO: %v\n", err)
+	}
+
+	if err = client.StartTLS(tlsConfig); err != nil {
+		client.Close()
+		return nil, fmt.Errorf("failed to start TLS: %v", err)
+	}
+
+	if emailSender.auth != nil {
+		if err = client.Auth(emailSender.auth); err != nil {
+			client.Close()
+			return nil, fmt.Errorf("failed to authenticate: %v", err)
+		}
+	}
+
+	return client, nil
+}
+
+// For standard username+password authentication, provide smtp.PlainAuth
+// identity is the email and (optional) display name for the sender
+// smtpServer is the SMTP server hostname
+// smtPort is the SMTP server port, usually 587 when using TLS
+func newSmtpEmailSenderWithAuth(identity senderIdentity, smtpServer string, smtpPort string, smtpAuth smtp.Auth) (*smtpActionsEmailSender, error) {
+	return &smtpActionsEmailSender{
+		identity: identity,
+		server:   smtpServer,
+		port:     smtpPort,
+		auth:     smtpAuth,
+	}, nil
+}
+
+func newSmtpEmailSenderNoAuth(identity senderIdentity, smtpServer string, smtpPort string) (*smtpActionsEmailSender, error) {
+	return newSmtpEmailSenderWithAuth(identity, smtpServer, smtpPort, nil)
+}
+
+// receiverName can be empty string, in which case the email is used.
+func (emailSender *smtpActionsEmailSender) SendEmail(receiverName string, receiverEmail string, subject string, body string) error {
+	var fromHeader, toHeader string
+
+	if emailSender.identity.name != "" {
+		fromHeader = fmt.Sprintf("%s <%s>", emailSender.identity.name, emailSender.identity.email)
+	} else {
+		fromHeader = emailSender.identity.email
+	}
+
+	if receiverName != "" {
+		toHeader = fmt.Sprintf("%s <%s>", receiverName, receiverEmail)
+	} else {
+		toHeader = receiverEmail
+	}
+
+	message := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\n\r\n%s",
+		fromHeader, toHeader, subject, body)
+
+	client, err := emailSender.setupClient()
+	if err != nil {
+		return fmt.Errorf("failed to setup SMTP client: %v", err)
+	}
+	defer client.Close()
+
+	if err = client.Mail(emailSender.identity.email); err != nil {
+		return fmt.Errorf("failed to set sender: %v", err)
+	}
+
+	if err = client.Rcpt(receiverEmail); err != nil {
+		return fmt.Errorf("failed to set recipient: %v", err)
+	}
+
+	writer, err := client.Data()
+	if err != nil {
+		return fmt.Errorf("failed to get data writer: %v", err)
+	}
+
+	_, err = writer.Write([]byte(message))
+	if err != nil {
+		return fmt.Errorf("failed to write message: %v", err)
+	}
+
+	err = writer.Close()
+	if err != nil {
+		return fmt.Errorf("failed to close writer: %v", err)
+	}
+
+	return nil
+}
+
+func makeGreeting(displayName string) string {
+	if displayName != "" {
+		return fmt.Sprintf("Dear %s,", displayName)
+	} else {
+		return "Hello,"
+	}
+}
+
+func (emailSender *smtpActionsEmailSender) SendSignupEmailAddressVerificationCode(emailAddress string, emailAddressVerificationCode string) error {
+	subject := "Signup verification code"
+	body := fmt.Sprintf("Your email address verification code is %s.", emailAddressVerificationCode)
+	return emailSender.SendEmail("", emailAddress, subject, body)
+}
+
+func (emailSender *smtpActionsEmailSender) SendUserEmailAddressUpdateEmailVerificationCode(emailAddress string, displayName string, emailAddressVerificationCode string) error {
+	subject := "Email update verification code"
+	greeting := makeGreeting(displayName)
+	codeMessage := fmt.Sprintf("You have made a request to update your email. Your verification code is %s.", emailAddressVerificationCode)
+	body := fmt.Sprintf("%s\n\n%s", greeting, codeMessage)
+	return emailSender.SendEmail(displayName, emailAddress, subject, body)
+}
+
+func (emailSender *smtpActionsEmailSender) SendUserPasswordResetTemporaryPassword(emailAddress string, displayName string, temporaryPassword string) error {
+	subject := "Password reset temporary password"
+	greeting := makeGreeting(displayName)
+	passwordMessage := fmt.Sprintf("Your password reset temporary password is %s.", temporaryPassword)
+	body := fmt.Sprintf("%s\n\n%s", greeting, passwordMessage)
+	return emailSender.SendEmail(displayName, emailAddress, subject, body)
+}
+
+func (emailSender *smtpActionsEmailSender) SendUserSignedInNotification(emailAddress string, displayName string, time time.Time) error {
+	subject := "Sign-in detected"
+	greeting := makeGreeting(displayName)
+	notificationMessage := fmt.Sprintf("We detected a sign-in to your account at %s (UTC).", time.UTC().Format("January 2, 2006 15:04:05"))
+	body := fmt.Sprintf("%s\n\n%s", greeting, notificationMessage)
+	return emailSender.SendEmail(displayName, emailAddress, subject, body)
+}
+
+func (emailSender *smtpActionsEmailSender) SendUserPasswordUpdatedNotification(emailAddress string, displayName string, time time.Time) error {
+	subject := "Password updated"
+	greeting := makeGreeting(displayName)
+	notificationMessage := fmt.Sprintf("Your account password was updated at %s (UTC).", time.UTC().Format("January 2, 2006 15:04:05"))
+	body := fmt.Sprintf("%s\n\n%s", greeting, notificationMessage)
+	return emailSender.SendEmail(displayName, emailAddress, subject, body)
+}
+
+func (emailSender *smtpActionsEmailSender) SendUserEmailAddressUpdatedNotification(emailAddress string, displayName string, newEmailAddress string, time time.Time) error {
+	subject := "Email updated"
+	greeting := makeGreeting(displayName)
+	notificationMessage := fmt.Sprintf("Your account email address was updated to %s at %s (UTC).", newEmailAddress, time.UTC().Format("January 2, 2006 15:04:05"))
+	body := fmt.Sprintf("%s\n\n%s", greeting, notificationMessage)
+	return emailSender.SendEmail(displayName, emailAddress, subject, body)
+}
