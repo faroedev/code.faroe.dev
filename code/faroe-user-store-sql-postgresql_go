@@ -1,0 +1,172 @@
+package main
+
+/*
+CREATE TABLE app_user (
+	id TEXT PRIMARY KEY,
+	email_address TEXT NOT NULL UNIQUE,
+	password_hash BYTEA NOT NULL,
+	password_salt BYTEA NOT NULL,
+	password_hash_algorithm_id TEXT NOT NULL,
+	disabled BOOLEAN NOT NULL DEFAULT FALSE,
+	email_address_counter INTEGER NOT NULL DEFAULT 0,
+	password_hash_counter INTEGER NOT NULL DEFAULT 0,
+	disabled_counter INTEGER NOT NULL DEFAULT 0,
+	sessions_counter INTEGER NOT NULL DEFAULT 0
+);
+*/
+
+import (
+	"database/sql"
+	"errors"
+	"fmt"
+
+	"github.com/faroedev/faroe"
+)
+
+type userStoreStruct struct {
+	db *sql.DB
+}
+
+func (userStore *userStoreStruct) CreateUser(emailAddress string, passwordHash []byte, passwordHashAlgorithmId string, passwordSalt []byte) (faroe.UserStruct, error) {
+	// TODO
+	id := generateRandomId()
+
+	_, err := userStore.db.Exec("INSERT INTO app_user (id, email_address, password_hash, password_hash_algorithm_id, password_salt) VALUES ($1, $2, $3, $4, $5)", id, emailAddress, passwordHash, passwordHashAlgorithmId, passwordSalt)
+
+	if err != nil {
+		// TODO
+		if isUniqueConstraintError(err) {
+			return faroe.UserStruct{}, faroe.ErrUserStoreUserEmailAddressAlreadyUsed
+		}
+		return faroe.UserStruct{}, fmt.Errorf("failed to run query: %s", err.Error())
+	}
+
+	user := faroe.UserStruct{
+		Id:                      id,
+		EmailAddress:            emailAddress,
+		PasswordHash:            passwordHash,
+		PasswordHashAlgorithmId: passwordHashAlgorithmId,
+		PasswordSalt:            passwordSalt,
+		DisplayName:             "",
+		Disabled:                false,
+		EmailAddressCounter:     0,
+		PasswordHashCounter:     0,
+		DisabledCounter:         0,
+		SessionsCounter:         0,
+	}
+	return user, nil
+}
+
+func (userStore *userStoreStruct) GetUser(userId string) (faroe.UserStruct, error) {
+	row := userStore.db.QueryRow("SELECT email_address, password_hash, password_hash_algorithm_id, password_salt, disabled, email_address_counter, password_hash_counter, disabled_counter, sessions_counter FROM app_user WHERE id = $1", userId)
+
+	var user faroe.UserStruct
+	user.Id = userId
+	err := row.Scan(
+		&user.EmailAddress,
+		&user.PasswordHash,
+		&user.PasswordHashAlgorithmId,
+		&user.PasswordSalt,
+		&user.Disabled,
+		&user.EmailAddressCounter,
+		&user.PasswordHashCounter,
+		&user.DisabledCounter,
+		&user.SessionsCounter,
+	)
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		return faroe.UserStruct{}, faroe.ErrUserStoreUserNotFound
+	}
+	if err != nil {
+		return faroe.UserStruct{}, fmt.Errorf("failed to run query: %s", err.Error())
+	}
+	return user, nil
+}
+
+func (userStore *userStoreStruct) GetUserByEmailAddress(emailAddress string) (faroe.UserStruct, error) {
+	row := userStore.db.QueryRow("SELECT id, password_hash, password_hash_algorithm_id, password_salt, disabled, email_address_counter, password_hash_counter, disabled_counter, sessions_counter FROM app_user WHERE email_address = $1", emailAddress)
+
+	var user faroe.UserStruct
+	user.EmailAddress = emailAddress
+	err := row.Scan(
+		&user.Id,
+		&user.PasswordHash,
+		&user.PasswordHashAlgorithmId,
+		&user.PasswordSalt,
+		&user.Disabled,
+		&user.EmailAddressCounter,
+		&user.PasswordHashCounter,
+		&user.DisabledCounter,
+		&user.SessionsCounter,
+	)
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		return faroe.UserStruct{}, faroe.ErrUserStoreUserNotFound
+	}
+	if err != nil {
+		return faroe.UserStruct{}, fmt.Errorf("failed to run query: %s", err.Error())
+	}
+
+	return user, nil
+}
+
+func (userStore *userStoreStruct) UpdateUserEmailAddress(userId string, emailAddress string, userEmailAddressCounter int32) error {
+	result, err := userStore.db.Exec("UPDATE app_user SET email_address = $1, email_address_counter = email_address_counter + 1 WHERE id = $2 AND email_address_counter = $3", emailAddress, userId, userEmailAddressCounter)
+
+	if err != nil {
+		// TODO
+		if isUniqueConstraintError(err) {
+			return faroe.ErrUserStoreUserEmailAddressAlreadyUsed
+		}
+		return fmt.Errorf("failed to run query: %s", err.Error())
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected < 1 {
+		return faroe.ErrUserStoreUserNotFound
+	}
+
+	return nil
+}
+
+func (userStore *userStoreStruct) UpdateUserPasswordHash(userId string, passwordHash []byte, passwordHashAlgorithmId string, passwordSalt []byte, userPasswordHashCounter int32) error {
+	result, err := userStore.db.Exec("UPDATE app_user SET password_hash = $1, password_hash_algorithm_id = $2, password_salt = $3, password_hash_counter = password_hash_counter + 1 WHERE id = $4 AND password_hash_counter = $5", passwordHash, passwordHashAlgorithmId, passwordSalt, userId, userPasswordHashCounter)
+
+	if err != nil {
+		return fmt.Errorf("failed to run query: %s", err.Error())
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected < 1 {
+		return faroe.ErrUserStoreUserNotFound
+	}
+
+	return nil
+}
+
+func (userStore *userStoreStruct) IncrementUserSessionsCounter(userId string, userSessionsCounter int32) error {
+	result, err := userStore.db.Exec("UPDATE app_user SET sessions_counter = sessions_counter + 1 WHERE id = $1 AND sessions_counter = $2", userId, userSessionsCounter)
+
+	if err != nil {
+		return fmt.Errorf("failed to run query: %s", err.Error())
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected < 1 {
+		return faroe.ErrUserStoreUserNotFound
+	}
+
+	return nil
+}
+
+func (userStore *userStoreStruct) DeleteUser(userId string) error {
+	result, err := userStore.db.Exec("DELETE FROM app_user WHERE id = $1", userId)
+	if err != nil {
+		return fmt.Errorf("failed to run query: %s", err.Error())
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected < 1 {
+		return faroe.ErrUserStoreUserNotFound
+	}
+
+	return nil
+}
