@@ -30,7 +30,7 @@ type actionsStruct struct {
 func (actions *actionsStruct) CreateUserAction(actionInvocationId string, emailAddress string, passwordHash []byte, passwordHashAlgorithmId string, passwordSalt []byte) (userserver.UserStruct, error) {
 	id := generateRandomId()
 
-	_, err := actions.db.Exec("INSERT INTO app_user (id, email_address, password_hash, password_hash_algorithm_id, password_salt) VALUES (?, ?, ?, ?, ?)",
+	_, err := actions.db.Exec("INSERT INTO app_user (id, email_address, password_hash, password_hash_algorithm_id, password_salt) VALUES ($1, $2, $3, $4, $5)",
 		id, emailAddress, passwordHash, passwordHashAlgorithmId, passwordSalt)
 
 	if err != nil {
@@ -58,7 +58,7 @@ func (actions *actionsStruct) CreateUserAction(actionInvocationId string, emailA
 }
 
 func (actions *actionsStruct) GetUserAction(actionInvocationId string, userId string) (userserver.UserStruct, error) {
-	row := actions.db.QueryRow("SELECT email_address, password_hash, password_hash_algorithm_id, password_salt, disabled, email_address_counter, password_hash_counter, disabled_counter, sessions_counter FROM app_user WHERE id = ?", userId)
+	row := actions.db.QueryRow("SELECT email_address, password_hash, password_hash_algorithm_id, password_salt, disabled, email_address_counter, password_hash_counter, disabled_counter, sessions_counter FROM app_user WHERE id = $1", userId)
 
 	var user userserver.UserStruct
 	user.Id = userId
@@ -84,7 +84,7 @@ func (actions *actionsStruct) GetUserAction(actionInvocationId string, userId st
 }
 
 func (actions *actionsStruct) GetUserByEmailAddressAction(_ string, emailAddress string) (userserver.UserStruct, error) {
-	row := actions.db.QueryRow("SELECT id, password_hash, password_hash_algorithm_id, password_salt, disabled, email_address_counter, password_hash_counter, disabled_counter, sessions_counter FROM app_user WHERE email_address = ?", emailAddress)
+	row := actions.db.QueryRow("SELECT id, password_hash, password_hash_algorithm_id, password_salt, disabled, email_address_counter, password_hash_counter, disabled_counter, sessions_counter FROM app_user WHERE email_address = $1", emailAddress)
 
 	var user userserver.UserStruct
 	user.EmailAddress = emailAddress
@@ -110,7 +110,7 @@ func (actions *actionsStruct) GetUserByEmailAddressAction(_ string, emailAddress
 }
 
 func (actions *actionsStruct) UpdateUserEmailAddressAction(_ string, userId string, emailAddress string, userEmailAddressCounter int32) error {
-	res, err := actions.db.Exec("UPDATE app_user SET email_address = ?, email_address_counter = email_address_counter + 1 WHERE id = ? AND email_address_counter = ?", emailAddress, userId, userEmailAddressCounter)
+	res, err := actions.db.Exec("UPDATE app_user SET email_address = $1, email_address_counter = email_address_counter + 1 WHERE id = $2 AND email_address_counter = $3", emailAddress, userId, userEmailAddressCounter)
 
 	if err != nil {
 		if isUniqueConstraintError(err) {
@@ -128,7 +128,7 @@ func (actions *actionsStruct) UpdateUserEmailAddressAction(_ string, userId stri
 }
 
 func (actions *actionsStruct) UpdateUserPasswordHashAction(_ string, userId string, passwordHash []byte, passwordHashAlgorithmId string, passwordSalt []byte, userPasswordHashCounter int32) error {
-	res, err := actions.db.Exec("UPDATE app_user SET password_hash = ?, password_hash_algorithm_id = ?, password_salt = ?, password_hash_counter = password_hash_counter + 1 WHERE id = ? AND password_hash_counter = ?",
+	res, err := actions.db.Exec("UPDATE app_user SET password_hash = $1, password_hash_algorithm_id = $2, password_salt = $3, password_hash_counter = password_hash_counter + 1 WHERE id = $4 AND password_hash_counter = $5",
 		passwordHash, passwordHashAlgorithmId, passwordSalt, userId, userPasswordHashCounter)
 
 	if err != nil {
@@ -144,7 +144,7 @@ func (actions *actionsStruct) UpdateUserPasswordHashAction(_ string, userId stri
 }
 
 func (actions *actionsStruct) IncrementUserSessionsCounterAction(_ string, userId string, userSessionsCounter int32) error {
-	res, err := actions.db.Exec("UPDATE app_user SET sessions_counter = sessions_counter + 1 WHERE id = ? AND sessions_counter = ?", userId, userSessionsCounter)
+	res, err := actions.db.Exec("UPDATE app_user SET sessions_counter = sessions_counter + 1 WHERE id = $1 AND sessions_counter = $2", userId, userSessionsCounter)
 
 	if err != nil {
 		fmt.Println(err)
@@ -159,7 +159,7 @@ func (actions *actionsStruct) IncrementUserSessionsCounterAction(_ string, userI
 }
 
 func (actions *actionsStruct) DeleteUserAction(_ string, userId string) error {
-	res, err := actions.db.Exec("DELETE FROM app_user WHERE id = ?", userId)
+	res, err := actions.db.Exec("DELETE FROM app_user WHERE id = $1", userId)
 	if err != nil {
 		fmt.Println(err)
 		return userserver.NewActionError("internal_error")
