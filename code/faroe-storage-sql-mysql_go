@@ -2,11 +2,11 @@ package main
 
 /*
 CREATE TABLE main_storage (
-	key TEXT NOT NULL PRIMARY KEY,
-	value BLOB NOT NULL,
-	counter INTEGER NOT NULL,
-	expires_at INTEGER NOT NULL
-) STRICT;
+    id VARCHAR(255) CHARACTER SET ascii COLLATE ascii_bin NOT NULL PRIMARY KEY,
+    value LONGBLOB NOT NULL,
+    counter INT UNSIGNED NOT NULL,
+    expires_at TIMESTAMP NOT NULL
+);
 */
 
 import (
@@ -30,7 +30,7 @@ func newMainStorage(db *sql.DB) *mainStorageStruct {
 }
 
 func (mainStorage *mainStorageStruct) Get(key string) ([]byte, int32, error) {
-	row := mainStorage.db.QueryRow("SELECT value, counter FROM main_storage WHERE key = ?", key)
+	row := mainStorage.db.QueryRow("SELECT value, counter FROM main_storage WHERE id = ?", key)
 
 	var value []byte
     var counter int32
@@ -45,8 +45,12 @@ func (mainStorage *mainStorageStruct) Get(key string) ([]byte, int32, error) {
 	return value, counter, nil
 }
 
-func (mainStorage *mainStorageStruct) Set(key string, value []byte, expiresAt time.Time) error {
-	_, err := mainStorage.db.Exec("INSERT INTO main_storage (key, value, counter, expires_at) VALUES (?, ?, ?, ?)", key, value, 0, expiresAt.Unix())
+func (mainStorage *mainStorageStruct) Add(key string, value []byte, expiresAt time.Time) error {
+	_, err := mainStorage.db.Exec("INSERT INTO main_storage (id, value, counter, expires_at) VALUES (?, ?, ?, ?)", key, value, 0, expiresAt.Unix())
+    // TODO: Driver-dependent.
+    if isUniqueConstraintError(err) {
+        return faroe.ErrStorageEntryAlreadyExists
+    }
 	if err != nil {
 		return fmt.Errorf("failed to run query: %s", err.Error())
 	}
@@ -55,7 +59,7 @@ func (mainStorage *mainStorageStruct) Set(key string, value []byte, expiresAt ti
 }
 
 func (mainStorage *mainStorageStruct) Update(key string, value []byte, expiresAt time.Time, counter int32) error {
-	result, err := mainStorage.db.Exec("UPDATE main_storage SET value = ?, counter = counter + 1, expires_at = ? WHERE key = ? AND counter = ?", value, expiresAt, key, counter)
+	result, err := mainStorage.db.Exec("UPDATE main_storage SET value = ?, counter = counter + 1, expires_at = ? WHERE id = ? AND counter = ?", value, expiresAt, key, counter)
 	if err != nil {
 		return fmt.Errorf("failed to run query: %s", err.Error())
 	}
@@ -68,7 +72,7 @@ func (mainStorage *mainStorageStruct) Update(key string, value []byte, expiresAt
 }
 
 func (mainStorage *mainStorageStruct) Delete(key string) error {
-	result, err := mainStorage.db.Exec("DELETE FROM main_storage WHERE key = ?", key)
+	result, err := mainStorage.db.Exec("DELETE FROM main_storage WHERE id = ?", key)
 	if err != nil {
 		return fmt.Errorf("failed to run query: %s", err.Error())
 	}
