@@ -1,0 +1,142 @@
+package main
+
+import (
+	"context"
+	"encoding/base64"
+	"errors"
+	"fmt"
+	"strconv"
+	"time"
+
+	"github.com/faroedev/faroe"
+	"github.com/redis/go-redis/v9"
+)
+
+type storageStruct struct {
+	client *redis.Client
+}
+
+func newStorage(client *redis.Client) *storageStruct {
+	storage := &storageStruct{
+		client: client,
+	}
+	return storage
+}
+
+func (storage *storageStruct) Get(key string) ([]byte, int32, error) {
+	values, err := storage.client.HMGet(context.Background(), key, "value", "counter").Result()
+	if err != nil && errors.Is(err, redis.Nil) {
+		return nil, 0, faroe.ErrStorageEntryNotFound
+	}
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to execute command: %s", err.Error())
+	}
+
+	if values[0] == nil || values[1] == nil {
+		_, err = storage.client.Del(context.Background(), key).Result()
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to execute command: %s", err.Error())
+		}
+		return nil, 0, faroe.ErrStorageEntryNotFound
+	}
+
+	value, err := base64.StdEncoding.DecodeString(values[0].(string))
+	if err != nil {
+		_, err = storage.client.Del(context.Background(), key).Result()
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to execute command: %s", err.Error())
+		}
+		return nil, 0, faroe.ErrStorageEntryNotFound
+	}
+
+	counter, err := strconv.ParseInt(values[1].(string), 10, 32)
+	if err != nil {
+		_, err = storage.client.Del(context.Background(), key).Result()
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to execute command: %s", err.Error())
+		}
+		return nil, 0, faroe.ErrStorageEntryNotFound
+	}
+
+	return value, int32(counter), nil
+}
+
+const storageAddRedisScript = `local key = KEYS[1]
+
+local encoded_value = ARGV[1]
+local encoded_expires_at = ARGV[2]
+
+local count = redis.call("EXISTS", key)
+if count == 1 then
+	return "already_exists"
+end
+
+redis.call("HSET", key, "value", encoded_value, "counter", 0)
+redis.call("EXPIREAT", key, encoded_expires_at)
+return "ok"`
+
+func (storage *storageStruct) Add(key string, value []byte, expiresAt time.Time) error {
+	keys := make([]string, 1)
+	keys[0] = key
+
+	encodedValue := base64.StdEncoding.EncodeToString(value)
+	result, err := storage.client.Eval(context.Background(), storageAddRedisScript, keys, encodedValue, expiresAt.Unix()).Result()
+	if err != nil {
+		return fmt.Errorf("failed to execute command: %s", err.Error())
+	}
+	resultCode := result.(string)
+	if resultCode == "already_exists" {
+		return faroe.ErrStorageEntryAlreadyExists
+	}
+
+	return nil
+}
+
+const storageUpdateRedisScript = `local key = KEYS[1]
+
+local encoded_value = ARGV[1]
+local encoded_expires_at = ARGV[2]
+local counter = tonumber(ARGV[3])
+
+local encoded_stored_counter = redis.call("HGET", key, "counter")
+if encoded_stored_counter == nil then
+	return "not_found"
+end
+
+if tonumber(encoded_stored_counter) ~= counter then
+    return "not_found"
+end
+
+redis.call("HSET", key, "value", encoded_value, "counter", counter + 1)
+redis.call("EXPIREAT", key, encoded_expires_at)
+return "ok"`
+
+func (storage *storageStruct) Update(key string, value []byte, expiresAt time.Time, counter int32) error {
+	keys := make([]string, 1)
+	keys[0] = key
+
+	encodedValue := base64.StdEncoding.EncodeToString(value)
+	result, err := storage.client.Eval(context.Background(), storageUpdateRedisScript, keys, encodedValue, expiresAt.Unix(), counter).Result()
+	if err != nil {
+		return fmt.Errorf("failed to execute command: %s", err.Error())
+	}
+	resultCode := result.(string)
+	if resultCode == "not_found" {
+		return faroe.ErrStorageEntryNotFound
+	}
+
+	return nil
+}
+
+func (storage *storageStruct) Delete(key string) error {
+	count, err := storage.client.Del(context.Background(), key).Result()
+	if err != nil {
+		return fmt.Errorf("failed to execute command: %s", err.Error())
+	}
+
+	if count < 1 {
+		return faroe.ErrStorageEntryNotFound
+	}
+
+	return nil
+}
